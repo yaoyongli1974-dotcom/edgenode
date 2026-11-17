@@ -1,30 +1,34 @@
-# Changelog
+# 版本变更记录
 
-All notable project changes are documented here.
+本文件记录项目各版本的重要变更。
 
 ## [0.1.3] - 2026-11-17
 
-### Added
-- Persistent device identity read from `/overlay/edgenode/etc/device-id`.
-- UTC timestamp field in the agent status payload.
-- `time_valid` field, conservatively set to `false` until clock synchronization can be verified reliably.
-- Read-only local HTTP API endpoints for status, device, system, network, and ZeroTier data.
-- Separate uhttpd service managed by procd, listening on `192.168.1.1:18080`.
+### 新增功能
 
-### Validated
-- Agent execution and JSON parsing on Cudy TR1200 v1 running OpenWrt 25.12.6.
-- Authenticated GET requests return the expected JSON payloads.
-- Missing or incorrect Bearer credentials return HTTP 401.
-- Non-GET requests return HTTP 405.
-- Unknown API routes return HTTP 404.
-- API service operates separately from the existing system uhttpd service.
+- 从设备本地文件 `/overlay/edgenode/etc/device-id` 读取持久化设备标识。
+- Agent 状态数据新增 UTC 时间戳字段。
+- 新增 `time_valid` 字段。在尚不能可靠判断系统时钟同步状态前，该字段保守地固定为 `false`。
+- 新增本地只读 HTTP API，提供设备状态、设备信息、系统信息、网络信息和 ZeroTier 状态查询接口。
+- 新增由 procd 管理的独立 uhttpd 服务，监听地址为 `192.168.1.1:18080`。
 
-### Security
-- Device-specific identifiers, API tokens, and live network values are excluded from the repository.
-- The API is read-only and exposes no shell or arbitrary command execution endpoint.
+### 验证情况
 
-### Limitations
-- This is an early, device-validated prototype, not a production-ready multi-platform release.
-- Cloud registration, HTTPS reporting, fleet management, MQTT, SNMP/Modbus, remote configuration, OTA, and production hardening are not implemented.
-- The system clock synchronization state is not yet verified by the agent.
-- Cross-architecture validation has not been completed.
+- 已在运行 OpenWrt 25.12.6 的 Cudy TR1200 v1 上验证 Agent 执行及 JSON 解析。
+- 携带有效认证信息的 GET 请求能够返回预期 JSON 数据。
+- 缺少 Bearer 凭据或凭据错误时返回 HTTP 401。
+- 非 GET 请求返回 HTTP 405。
+- 未知 API 路由返回 HTTP 404。
+- API 服务与系统原有 uhttpd 服务独立运行。
+
+### 安全改进与约束
+
+- 仓库不包含设备专属标识、API Token 和真实网络运行数据。
+- API 仅提供只读能力，不提供 Shell 或任意命令执行接口。
+
+### 当前限制
+
+- 本版本属于早期设备验证原型，并非可直接用于生产环境的多平台正式版本。
+- 尚未实现云端注册、HTTPS 数据上报、设备群组管理、MQTT、SNMP/Modbus、远程配置、OTA 和生产级安全加固。
+- Agent 尚不能验证系统时钟是否已完成同步。
+- 尚未完成其他 CPU 架构和硬件平台的兼容性验证。
