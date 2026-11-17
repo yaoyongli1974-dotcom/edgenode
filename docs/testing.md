@@ -1,66 +1,66 @@
-# Test Record — EdgeNode 0.1.3
+# EdgeNode 0.1.3 测试记录
 
-## Test environment
+## 测试环境
 
-| Item | Validated environment |
+| 项目 | 已验证环境 |
 |---|---|
-| Device | Cudy TR1200 v1 |
-| Firmware | OpenWrt 25.12.6 |
-| Target | ramips/mt76x8 |
-| CPU architecture | MIPS 24KEc |
-| OpenWrt architecture | `mipsel_24kc` |
-| Shell | BusyBox ash |
+| 设备型号 | Cudy TR1200 v1 |
+| 固件版本 | OpenWrt 25.12.6 |
+| 目标平台 | ramips/mt76x8 |
+| CPU 架构 | MIPS 24KEc |
+| OpenWrt 架构标识 | `mipsel_24kc` |
+| Shell 环境 | BusyBox ash |
 | Agent | 0.1.3 |
-| API | Read-only CGI via dedicated uhttpd/procd service |
+| API | 通过独立 uhttpd/procd 服务提供的只读 CGI 接口 |
 
-These results describe the tested device and firmware combination only. They do not establish compatibility with all OpenWrt devices.
+以上结果仅说明该设备与固件组合已完成测试，不能据此认定所有 OpenWrt 设备均兼容。
 
-## Agent checks
+## Agent 功能检查
 
-| Check | Result |
+| 检查项目 | 测试结果 |
 |---|---|
-| Agent starts and exits successfully | PASS |
-| Output parses as JSON with jsonfilter | PASS |
-| Device model, CPU, architecture, firmware reported | PASS |
-| Persistent device ID read from local file | PASS |
-| Uptime and 1-minute load reported | PASS |
-| Memory and root filesystem usage reported | PASS |
-| Network interface IPv4 data collected | PASS |
-| ZeroTier status collected when CLI is available | PASS |
-| UTC timestamp emitted | PASS |
-| Clock synchronization validity | LIMITED — `time_valid` remains `false` |
+| Agent 能够启动并正常执行结束 | 通过 |
+| 输出内容能够由 jsonfilter 解析为 JSON | 通过 |
+| 能够上报设备型号、CPU、架构和固件信息 | 通过 |
+| 能够从本地文件读取持久化设备标识 | 通过 |
+| 能够上报运行时间和 1 分钟系统负载 | 通过 |
+| 能够上报内存和根文件系统使用情况 | 通过 |
+| 能够采集网络接口 IPv4 信息 | 通过 |
+| ZeroTier 命令行工具可用时能够采集其状态 | 通过 |
+| 能够输出 UTC 时间戳 | 通过 |
+| 系统时钟同步有效性 | 有限制：`time_valid` 当前保持为 `false` |
 
-## API checks
+## API 功能检查
 
-| Request | Expected | Result |
+| 请求场景 | 预期状态码 | 测试结果 |
 |---|---:|---|
-| GET status without token | 401 | PASS |
-| GET status with incorrect token | 401 | PASS |
-| GET documented endpoint with valid token | 200 | PASS |
-| GET device endpoint | 200 | PASS |
-| GET system endpoint | 200 | PASS |
-| GET network endpoint | 200 | PASS |
-| GET ZeroTier endpoint | 200 | PASS |
-| POST request | 405 | PASS |
-| GET unknown route | 404 | PASS |
+| 不携带 Token 请求状态接口 | 401 | 通过 |
+| 携带错误 Token 请求状态接口 | 401 | 通过 |
+| 携带有效 Token 请求文档列出的接口 | 200 | 通过 |
+| 请求设备信息接口 | 200 | 通过 |
+| 请求系统信息接口 | 200 | 通过 |
+| 请求网络信息接口 | 200 | 通过 |
+| 请求 ZeroTier 信息接口 | 200 | 通过 |
+| 发送 POST 请求 | 405 | 通过 |
+| 请求未知路由 | 404 | 通过 |
 
-## Service isolation
+## 服务隔离检查
 
-- Dedicated EdgeNode uhttpd instance managed by procd: validated running.
-- Dedicated listener configured for `192.168.1.1:18080`.
-- Existing system uhttpd on ports 80/443 was left unchanged during validation.
-- Service enablement was configured; a full reboot-based autostart test has not been recorded.
+- 由 procd 管理的 EdgeNode 独立 uhttpd 实例：已验证正常运行。
+- 独立服务监听地址：`192.168.1.1:18080`。
+- 验证期间，系统原有监听 80/443 端口的 uhttpd 服务保持不变。
+- 已配置服务启用；尚无完整重启设备后自动启动的测试记录。
 
-## Known gaps
+## 已知测试缺口
 
-- No automated test suite or continuous integration pipeline yet.
-- No load, endurance, or resource-pressure testing.
-- No TLS endpoint or remote exposure validation.
-- No multi-device or multi-architecture validation.
-- No fuzzing or formal security assessment.
-- No verified NTP synchronization detection.
-- No cloud, MQTT, SNMP/Modbus, remote configuration, or OTA test coverage because those features are not implemented.
+- 尚未建立自动化测试套件或持续集成流水线。
+- 尚未开展负载、耐久性和资源压力测试。
+- 尚未进行 TLS 接口或远程暴露场景验证。
+- 尚未完成多设备、多 CPU 架构兼容性验证。
+- 尚未开展模糊测试或正式安全评估。
+- 尚未实现经过验证的 NTP 时钟同步状态检测。
+- 云端、MQTT、SNMP/Modbus、远程配置和 OTA 功能尚未实现，因此没有对应测试覆盖。
 
-## Reproduction and evidence
+## 测试复现与证据管理
 
-Run tests only on a lab or maintenance device with recovery access. Never publish API tokens, device UUIDs, MAC addresses, private network identifiers, or live IP addresses in test output. Sanitized sample data is provided in `../examples/status.json`.
+测试应仅在具备实验条件或维护窗口、且可进行本地恢复的设备上开展。测试输出不得公开 API Token、设备 UUID、MAC 地址、私有网络标识或真实 IP 地址。脱敏示例数据位于 `../examples/status.json`。
