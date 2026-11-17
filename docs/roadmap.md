@@ -8,8 +8,11 @@
 
 - Shell Agent：采集设备、系统、网络和 ZeroTier 状态。
 - 持久化设备标识：存储在源码目录之外的本地文件中。
-- 本地只读 HTTP API：采用 Bearer Token 认证。
+- 本地只读 HTTP API：采用 Bearer Token 认证，支持 GET/HEAD。
 - 独立 uhttpd 服务：由 procd 监管。
+- 脚本级回归测试套件，并在 GitHub Actions 上对 sh / dash / bash / busybox ash 四种解释器持续验证。
+- `make test / test-all / lint / dist / install` 与安装、卸载脚本（替代早期纯手工 scp 部署）。
+- MIT 许可证。
 
 ## 0.2.0 — 云端连接能力
 

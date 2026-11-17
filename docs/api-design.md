@@ -22,12 +22,15 @@
 
 API 同时接受根路径请求，并将其映射为完整状态数据响应。
 
+上述接口均同时支持 `GET` 与 `HEAD`。`HEAD` 走与 `GET` 完全相同的鉴权、路由与数据采集流程，状态码与响应头一致，`Content-Length` 等于同一请求 `GET` 时响应体的字节数，但不返回响应体，适合监控探针做轻量存活检查。
+
 ## HTTP 状态码与行为
 
 - 缺少或无效的 Bearer Token：返回 `401 Unauthorized`。
-- 请求方法不是 GET：返回 `405 Method Not Allowed`。
+- 请求方法不是 `GET` 或 `HEAD`（如 POST/PUT/DELETE/PATCH）：返回 `405 Method Not Allowed`，并带 `Allow: GET, HEAD` 响应头，响应体仍是统一的 `{"error":"method_not_allowed"}`。
 - 请求路径不存在：返回 `404 Not Found`。
 - 请求成功：返回 `200 OK`。
+- `HEAD` 请求：状态码与响应头和 `GET` 完全一致（包括 401/404/500 等错误响应），`Content-Length` 仍为对应 `GET` 响应体的字节数，但不输出响应体。
 - 响应包含 `Cache-Control: no-store`，避免客户端或中间缓存保存状态数据。
 - 响应包含 `Content-Length` 与 `X-Content-Type-Options: nosniff`。
 - 内部错误统一返回 `500 {"error":"internal_error"}`，具体原因只写入服务端日志。

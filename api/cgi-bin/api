@@ -1,7 +1,8 @@
 #!/bin/sh
 
 # EdgeNode 本地只读 API (CGI) 0.1.4
-# 仅接受 GET + Bearer Token；不提供 Shell 或任意命令执行能力。
+# 仅接受 GET/HEAD + Bearer Token；不提供 Shell 或任意命令执行能力。
+# HEAD 与 GET 走完全相同的流程，只是不输出响应体（Content-Length 保持一致）。
 
 PATH=/usr/sbin:/usr/bin:/sbin:/bin
 
@@ -17,8 +18,11 @@ AUTH_HEADER="${HTTP_AUTHORIZATION:-${REDIRECT_HTTP_AUTHORIZATION:-}}"
 respond() {
     code="$1"
     message="$2"
+    # 可选的附加响应头（每条一行，不含结尾 CRLF），目前仅 405 使用。
+    extra_headers="${3:-}"
 
-    # 必须与下面实际输出的字节数一致（printf 会补一个换行）。
+    # 必须与 GET 时实际输出的字节数一致（printf 会补一个换行）。
+    # HEAD 只省略响应体，长度仍按完整 body 计算，故先算长度再决定是否打印。
     length=$(printf '%s\n' "$message" | wc -c | tr -d ' ')
 
     printf 'Status: %s\r\n' "$code"
@@ -26,8 +30,14 @@ respond() {
     printf 'Content-Length: %s\r\n' "$length"
     printf 'Cache-Control: no-store\r\n'
     printf 'X-Content-Type-Options: nosniff\r\n'
+    if [ -n "$extra_headers" ]; then
+        printf '%s\r\n' "$extra_headers"
+    fi
     printf '\r\n'
-    printf '%s\n' "$message"
+
+    if [ "$REQUEST_METHOD" != "HEAD" ]; then
+        printf '%s\n' "$message"
+    fi
 }
 
 # 单次响应；成功路径也必须带 Content-Length。
@@ -61,10 +71,14 @@ token_matches() {
     [ "$provided" = "$expected" ]
 }
 
-if [ "$REQUEST_METHOD" != "GET" ]; then
-    respond "405 Method Not Allowed" '{"error":"method_not_allowed"}'
-    exit 0
-fi
+case "$REQUEST_METHOD" in
+    GET|HEAD)
+        ;;
+    *)
+        respond "405 Method Not Allowed" '{"error":"method_not_allowed"}' 'Allow: GET, HEAD'
+        exit 0
+        ;;
+esac
 
 if [ ! -s "$TOKEN_FILE" ]; then
     internal_error "token file missing or empty"

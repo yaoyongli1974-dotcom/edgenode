@@ -2,6 +2,38 @@
 
 本文件记录项目各版本的重要变更。
 
+## [未发布]
+
+Agent 版本号仍为 `0.1.4`（本次未改动采集逻辑与输出 schema），以下为仓库工程化与 API 行为变更。
+
+### 新增
+
+- GitHub Actions 流水线 `.github/workflows/test.yml`：push / pull request / 手动触发，在 ubuntu-latest 上对 sh、dash、busybox ash、bash 四种解释器分别运行回归测试，并单独运行 shellcheck。
+- `Makefile`：`help`（默认）、`test`、`test-all`、`lint`、`dist`、`install`、`clean`；版本号从 Agent 的 `AGENT_VERSION` 提取，不重复硬编码。
+- `scripts/install.sh`：幂等安装。覆盖前备份旧文件，按需生成 `api.token` 与 `device-id`（`/dev/urandom` + `md5sum`，0600），写入 procd init 脚本并 `enable`、重启独立 uhttpd，最后带 Token 做健康检查。支持 `--prefix`、`--listen`、`--init-dir`、`--no-start`、`--no-service`、`--force-token`。不修改 `/etc/config/uhttpd`，不触碰系统 uhttpd。
+- `scripts/uninstall.sh`：停服务、`disable`、删除 init 脚本与开机链接；默认保留数据目录，`--purge` 才连同凭据一并删除。
+- API 支持 `HEAD`：与 GET 走完全相同的鉴权、路由、采集与投影流程，状态码与响应头一致、`Content-Length` 相同，但不输出响应体，便于监控探针做存活检查。
+- 其它方法返回 405 时新增 `Allow: GET, HEAD` 响应头。
+- MIT 许可证（`LICENSE`）。
+
+### 变更
+
+- Agent 枚举网络接口改用 `/sys/class/net/*` glob，替代 `for … in $(ls …)`（消除 shellcheck SC2045）；输出与旧实现逐字节一致。
+- 回归断言由 31 项增至 38 项，新增 HEAD 相关覆盖；`tests/run-tests.sh` 与两个安装脚本均通过 `shellcheck -s sh` 零告警。
+- 文档：README 增加 CI 徽章、快速开始与目录说明；部署指南增加安装/卸载脚本章节；API 设计、安全说明、测试记录与路线图同步更新。
+
+### 验证情况
+
+- 脚本级：`make test-all` 四种解释器各 38 项全部通过；`make lint` 对 agent、api、tests、install、uninstall 五个脚本零告警。
+- 设备级：在 Cudy TR1200 v1（OpenWrt 25.12.6）上用 `make dist` 产物走完整链路复验——安装、卸载（保留数据）、再安装均退出码 0；部署文件与仓库 sha256 一致；已有 Token 与设备标识保持不变；系统 uhttpd（pid 2290）全程未受影响。
+- HEAD 行为在设备上用原始 HTTP 报文验证：HEAD 响应共 150 字节并以 `\r\n\r\n` 结束（无 body），响应头与 GET 逐字节相同；未授权 HEAD 同样无 body。
+
+### 已知限制
+
+- HEAD 仍会触发一次完整采集与投影，高频探针需注意设备负载。
+- 安装脚本的健康检查依赖 `curl`（缺失时跳过）；`--listen` 地址白名单暂不接受 IPv6 方括号写法。
+- 本地 API 仍为 HTTP 明文、仍由 root 身份的 uhttpd 提供；仍无请求限速与自动 Token 轮换。
+
 ## [0.1.4] - 2026-11-17
 
 ### 修复

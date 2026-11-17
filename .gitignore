@@ -35,3 +35,8 @@ out/
 *.o
 *.a
 *.so
+*.tar.gz
+
+# Local backups / scratch
+*.bak
+*.pre-install.*

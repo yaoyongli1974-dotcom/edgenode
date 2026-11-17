@@ -1,5 +1,7 @@
 # EdgeNode
 
+[![test](https://github.com/yaoyongli1974-dotcom/edgenode/actions/workflows/test.yml/badge.svg)](https://github.com/yaoyongli1974-dotcom/edgenode/actions/workflows/test.yml)
+
 EdgeNode 是面向嵌入式 Linux 设备的轻量级边缘网关代理与管理平台。
 
 项目面向 OpenWrt 路由器、工业边缘网关等资源受限设备。长期目标是构建具备硬件抽象、协议适配和云端管理连接能力的可移植设备代理。
@@ -8,7 +10,7 @@ EdgeNode 是面向嵌入式 Linux 设备的轻量级边缘网关代理与管理�
 
 **版本：0.1.4 — 已完成设备验证的技术原型**
 
-> 0.1.4 为修复版本（JSON 转义、ZeroTier 解析、API 响应加固），已在 Cudy TR1200 v1 上部署复验，并通过 31 项脚本级回归测试。详见 `CHANGELOG.md` 与 `docs/testing.md`。
+> 0.1.4 为修复版本（JSON 转义、ZeroTier 解析、API 响应加固），已在 Cudy TR1200 v1 上部署复验并通过整机重启验证。仓库现有 38 项脚本级回归断言，在 GitHub Actions 上对 sh / dash / bash / busybox ash 四种解释器持续验证。详见 `CHANGELOG.md` 与 `docs/testing.md`。
 
 EdgeNode 0.1.4 原型已在运行 OpenWrt 25.12.6 的 Cudy TR1200 v1 上完成验证（ramips/mt76x8，MIPS）。这是一个经过单设备验证的技术原型，并非已经具备生产部署条件的多平台正式版本。
 
@@ -18,7 +20,7 @@ EdgeNode 0.1.4 原型已在运行 OpenWrt 25.12.6 的 Cudy TR1200 v1 上完成�
 - 采集网络接口 IPv4 信息。
 - 在设备具备 ZeroTier 命令行工具时，采集 ZeroTier 网络状态。
 - 提供本地只读 HTTP API，用于查询设备状态。
-- API 请求必须携带 Bearer Token；拒绝非 GET 请求。
+- API 请求必须携带 Bearer Token；支持 `GET` 与 `HEAD`（HEAD 不返回响应体），其它方法返回 405。
 - API 由 procd 管理的独立 uhttpd 实例提供服务，监听地址为 `192.168.1.1:18080`，不替换系统原有 Web 服务。
 
 尚未实现的功能：云端注册、HTTPS 心跳上报、设备群组管理、MQTT、SNMP/Modbus 协议适配、远程配置、OTA 升级、跨架构验证和生产级安全加固。
@@ -30,7 +32,24 @@ EdgeNode 0.1.4 原型已在运行 OpenWrt 25.12.6 的 Cudy TR1200 v1 上完成�
 - `docs/` — 架构、API、安全、部署、测试和路线图文档
 - `examples/` — 已脱敏的示例数据
 - `tests/` — 脚本级回归测试（`sh tests/run-tests.sh`）
+- `scripts/` — 设备安装与卸载脚本
+- `.github/workflows/` — GitHub Actions：四种 shell 的回归测试 + shellcheck
+- `Makefile` — `test` / `test-all` / `lint` / `dist` / `install` / `clean`
 - `CHANGELOG.md` — 版本变更记录
+- `LICENSE` — MIT 许可证
+
+## 快速开始
+
+开发机（需要 GNU make 与 python3；dash、busybox、shellcheck 可选）：
+
+```sh
+make test        # 运行回归测试
+make test-all    # 依次用 sh / dash / bash / busybox ash 运行
+make lint        # shellcheck 静态检查（未安装则跳过）
+make dist        # 打包 dist/edgenode-<版本>.tar.gz
+```
+
+设备端（OpenWrt）：把 tarball 传到设备 `/tmp` 解包后执行 `sh scripts/install.sh`，脚本会备份旧文件、按需生成 Token 与设备标识、安装并启动独立的 uhttpd 服务，最后做一次带 Token 的健康检查。详见[部署指南](docs/deployment.md)。
 
 ## 文档
 
@@ -60,4 +79,5 @@ EdgeNode 0.1.4 原型已在运行 OpenWrt 25.12.6 的 Cudy TR1200 v1 上完成�
 
 ## 许可证
 
-项目目前尚未选择开源许可证。除非后续明确添加许可证，否则项目内容保留所有权利。
+本项目采用 [MIT 许可证](LICENSE)（Copyright (c) 2026 Yaoyongli）。
+

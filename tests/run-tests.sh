@@ -8,12 +8,13 @@
 #   - Agent 输出的 JSON 合法性、字符串转义、数值兜底
 #   - ZeroTier 网络名含空格时不丢数据（0.1.3 的回归缺陷）
 #   - ZeroTier CLI 不存在时不报错、输出空数组
-#   - CGI 认证（401）、方法限制（405）、路由（404）、内部错误（500 且不泄露细节）
+#   - CGI 认证（401）、方法限制（405 + Allow 头）、路由（404）、内部错误（500 且不泄露细节）
 #   - CGI 响应 Content-Length 与实际字节数一致
+#   - HEAD 与 GET 同流程：状态码/响应头一致、Content-Length 等于 GET 的 body 字节数、无 body
 
 set -u
 
-ROOT=$(CDPATH= cd -- "$(dirname -- "$0")/.." && pwd)
+ROOT=$(CDPATH='' cd -- "$(dirname -- "$0")/.." && pwd)
 AGENT="$ROOT/agent/edgenode-agent"
 API="$ROOT/api/cgi-bin/api"
 
@@ -138,6 +139,11 @@ run_api() {
     ${SH_CMD} "$API"
 }
 
+header_value() {
+    # $1 = 响应头名（大小写不敏感）；取最近一次 api_call 拆出的头字段值
+    awk -F': ' -v name="$1" 'tolower($1) == tolower(name) {print $2; exit}' "$TMP/hdr"
+}
+
 api_call() {
     # 结果写入 CODE / HDR_LEN / BODY_BYTES / BODY
     run_api "$@" > "$TMP/raw" 2> "$TMP/log"
@@ -145,7 +151,7 @@ api_call() {
     python3 "$ROOT/tests/cgi_split.py" < "$TMP/raw" > "$TMP/hdr" 2> "$TMP/body"
 
     CODE=$(awk 'NR==1 {print $2}' "$TMP/hdr")
-    HDR_LEN=$(awk -F': ' '/^Content-Length:/ {print $2}' "$TMP/hdr")
+    HDR_LEN=$(header_value Content-Length)
     BODY_BYTES=$(wc -c < "$TMP/body" | tr -d ' ')
     BODY=$(cat "$TMP/body")
 }
@@ -271,6 +277,13 @@ expect_code 401 "非 Bearer 认证scheme 返回 401"
 api_call POST "Bearer unit-test-token-0123456789" "" "$TMP/api.token" "$TMP/agent-wrapper"
 expect_code 405 "POST 方法返回 405（即使 Token 正确）"
 
+ALLOW=$(header_value Allow)
+if printf '%s\n' "$ALLOW" | grep -q GET && printf '%s\n' "$ALLOW" | grep -q HEAD; then
+    ok "405 响应带 Allow 头并同时列出 GET 与 HEAD ($ALLOW)"
+else
+    no "405 响应带 Allow 头并同时列出 GET 与 HEAD" "实际 Allow: '$ALLOW'"
+fi
+
 api_call GET "Bearer unit-test-token-0123456789" "/v1/nope" "$TMP/api.token" "$TMP/agent-wrapper"
 expect_code 404 "未知路由返回 404"
 
@@ -336,6 +349,55 @@ if [ -s "$TMP/log" ]; then
     ok "内部错误细节写入服务端日志"
 else
     no "内部错误细节写入服务端日志"
+fi
+
+# ---------------------------------------------------------------- HEAD 测试
+
+# HEAD 与 GET 的 Content-Length 必须逐字节相等，而真实 Agent 的内存/负载读数
+# 在两次调用之间可能变化，故先冻结一份 Agent 输出快照作为确定性夹具。
+run_agent "$TMP/release" "$TMP/device-id" "$TMP/model" "$TMP/zt-cli.sh" > "$TMP/agent-snapshot.json"
+
+cat > "$TMP/agent-frozen" <<EOF
+#!/bin/sh
+cat "$TMP/agent-snapshot.json"
+EOF
+chmod +x "$TMP/agent-frozen"
+
+# 基准：同一夹具下的 GET /v1/status
+api_call GET "Bearer unit-test-token-0123456789" "/v1/status" "$TMP/api.token" "$TMP/agent-frozen"
+GET_BODY_BYTES="$BODY_BYTES"
+cp "$TMP/hdr" "$TMP/hdr-get"
+
+api_call HEAD "Bearer unit-test-token-0123456789" "/v1/status" "$TMP/api.token" "$TMP/agent-frozen"
+expect_code 200 "HEAD /v1/status 返回 200"
+
+if [ "$BODY_BYTES" = "0" ]; then
+    ok "HEAD 响应不输出 body"
+else
+    no "HEAD 响应不输出 body" "实际字节数: $BODY_BYTES"
+fi
+
+if [ "$HDR_LEN" = "$GET_BODY_BYTES" ]; then
+    ok "HEAD 的 Content-Length 等于 GET 的 body 字节数 ($HDR_LEN)"
+else
+    no "HEAD 的 Content-Length 等于 GET 的 body 字节数" \
+       "HEAD 头: $HDR_LEN / GET body: $GET_BODY_BYTES"
+fi
+
+if cmp -s "$TMP/hdr" "$TMP/hdr-get"; then
+    ok "HEAD 与 GET 的响应头完全一致"
+else
+    no "HEAD 与 GET 的响应头完全一致" \
+       "GET: $(tr '\n' '|' < "$TMP/hdr-get") / HEAD: $(tr '\n' '|' < "$TMP/hdr")"
+fi
+
+api_call HEAD "" "/v1/status" "$TMP/api.token" "$TMP/agent-frozen"
+expect_code 401 "HEAD 缺少 Authorization 头返回 401"
+
+if [ "$BODY_BYTES" = "0" ]; then
+    ok "HEAD 401 响应同样不输出 body"
+else
+    no "HEAD 401 响应同样不输出 body" "实际字节数: $BODY_BYTES"
 fi
 
 # ---------------------------------------------------------------- 汇总

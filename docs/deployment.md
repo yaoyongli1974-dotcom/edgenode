@@ -50,6 +50,50 @@
 
 缺少 `jsonfilter` 时，`/v1/device` 等投影接口会返回 `500 {"error":"internal_error"}`，具体原因写入服务端日志。
 
+## 使用安装脚本部署
+
+仓库提供 `scripts/install.sh`（POSIX sh，可在 BusyBox ash 下运行），替代早期纯手工 `scp` + `chmod` 流程。脚本只部署 EdgeNode 自己的文件，并管理独立的 uhttpd 实例。
+
+在开发机上打包并传输：
+
+```sh
+make dist
+scp dist/edgenode-<VERSION>.tar.gz root@192.168.1.1:/tmp/
+```
+
+在设备上解包并安装：
+
+```sh
+cd /tmp && tar xzf edgenode-<VERSION>.tar.gz
+sh scripts/install.sh
+```
+
+常用选项：
+
+| 选项 | 作用 |
+|---|---|
+| `--prefix DIR` | 安装根目录，默认 `/overlay/edgenode` |
+| `--listen ADDR:PORT` | 独立 uhttpd 监听地址，默认 `192.168.1.1:18080` |
+| `--init-dir DIR` | init 脚本目录，默认 `/etc/init.d`（仅测试用） |
+| `--no-start` | 只安装并 enable，不启动服务 |
+| `--no-service` | 只铺文件，不写 init 脚本、不 enable/start（便于非 OpenWrt 环境自测） |
+| `--force-token` | 强制重新生成 API Token（默认保留已有 Token） |
+
+脚本行为要点：
+
+- 覆盖前先把现有 agent / CGI 备份为 `*.pre-install.<UTC 时间戳>.bak`。
+- `api.token`、`device-id` 仅在缺失时生成（`/dev/urandom` + `md5sum`），权限 `0600`；已存在则保留。
+- 按上表权限安装文件，写入 `/etc/init.d/edgenode-api` 并 `enable`，随后重启该独立服务。
+- 安装结束做一次健康检查：带 Token 请求 `/cgi-bin/api/v1/status`，期望 `200`，否则报错退出（设备未装 `curl` 时跳过该检查）。
+- 不修改 `/etc/config/uhttpd`，不停止或重启系统 uhttpd。
+
+卸载：
+
+```sh
+sh scripts/uninstall.sh            # 停服务、disable、删除 init 脚本，保留数据目录
+sh scripts/uninstall.sh --purge    # 连同 /overlay/edgenode（含 Token 与设备标识）一并删除
+```
+
 ## 服务运行方式
 
 原型通过 procd 管理一个独立的 uhttpd 进程：
@@ -77,7 +121,8 @@ Authorization: Bearer <API_TOKEN>
 
 - 未携带 Token 或 Token 错误：HTTP 401。
 - 携带有效 Token，对文档列出的接口发起 GET 请求：HTTP 200。
-- 使用任何非 GET 请求方法：HTTP 405。
+- 携带有效 Token 发起 HEAD 请求：状态码与响应头和 GET 一致，`Content-Length` 相同，但无响应体。
+- 使用 GET/HEAD 以外的请求方法：HTTP 405，并带 `Allow: GET, HEAD`。
 - 请求未知路径：HTTP 404。
 
 当前验证设备的 API 基础地址：

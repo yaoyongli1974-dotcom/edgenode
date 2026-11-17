@@ -224,7 +224,9 @@ get_zerotier() {
 get_networks() {
     first=1
 
-    for iface in $(ls /sys/class/net 2>/dev/null); do
+    for iface_path in /sys/class/net/*; do
+        [ -e "$iface_path" ] || continue
+        iface=${iface_path##*/}
         addr=$(get_interface "$iface")
 
         if [ "$first" = 1 ]; then

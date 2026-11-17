@@ -1,0 +1,70 @@
+name: test
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  shell-tests:
+    name: shell-tests (${{ matrix.name }})
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: sh
+            en_sh: sh
+          - name: dash
+            en_sh: dash
+          - name: busybox-ash
+            en_sh: busybox ash
+          - name: bash
+            en_sh: bash
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y dash busybox-static shellcheck python3
+
+      - name: Show Python version
+        run: python3 --version
+
+      # EN_SH selects the interpreter for the scripts under test; the runner
+      # itself stays /bin/sh (dash on Ubuntu). The value may contain spaces
+      # ("busybox ash"), so it must remain a single quoted string.
+      - name: Run shell tests (${{ matrix.name }})
+        run: EN_SH="${{ matrix.en_sh }}" sh tests/run-tests.sh
+
+  shellcheck:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install shellcheck
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y shellcheck
+
+      # scripts/install.sh and scripts/uninstall.sh may not exist yet;
+      # skip missing files instead of failing.
+      - name: Run shellcheck
+        run: |
+          rc=0
+          for f in agent/edgenode-agent api/cgi-bin/api tests/run-tests.sh scripts/install.sh scripts/uninstall.sh; do
+            if [ -f "$f" ]; then
+              shellcheck -s sh "$f" || rc=1
+            else
+              echo "SKIP $f (not found)"
+            fi
+          done
+          exit "$rc"
