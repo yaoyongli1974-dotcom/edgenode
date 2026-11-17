@@ -1,55 +1,55 @@
-# Roadmap
+# EdgeNode 产品开发路线图
 
-This roadmap describes intended work. Items below are not claims of completed functionality unless explicitly marked implemented.
+本路线图描述项目后续计划。除明确标注为“已实现”的内容外，其他条目均属于规划，不代表当前版本已经具备相应功能。
 
-## 0.1.x — Local prototype
+## 0.1.x — 本地设备原型
 
-Implemented and validated on one Cudy TR1200 v1 device:
+**状态：已在一台 Cudy TR1200 v1 设备上实现并完成验证。**
 
-- Shell agent with device, system, network, and ZeroTier status collection.
-- Persistent device identifier stored outside the source tree.
-- Local read-only HTTP API with Bearer authentication.
-- Separate uhttpd service supervised by procd.
+- Shell Agent：采集设备、系统、网络和 ZeroTier 状态。
+- 持久化设备标识：存储在源码目录之外的本地文件中。
+- 本地只读 HTTP API：采用 Bearer Token 认证。
+- 独立 uhttpd 服务：由 procd 监管。
 
-## 0.2.0 — Cloud connectivity
+## 0.2.0 — 云端连接能力
 
-Planned:
+**计划实现：**
 
-- Device registration and enrollment flow.
-- Per-device cloud credentials, separate from the local API token.
-- Outbound HTTPS heartbeat and telemetry upload.
-- Server-side last-seen state and basic device registry.
-- Bounded retry and offline behavior.
+- 设备注册与入网流程。
+- 为每台设备分配独立云端凭据，与本地 API Token 分离。
+- 通过主动发起的 HTTPS 连接上报心跳和运行数据。
+- 服务端设备最后在线状态及基础设备注册管理。
+- 有边界的失败重试机制和离线处理策略。
 
-## 0.3.x — Device management
+## 0.3.x — 设备管理能力
 
-Planned:
+**计划实现：**
 
-- Fleet inventory and status views.
-- Telemetry history and alert rules.
-- Controlled configuration model and audit trail.
+- 设备群组资产清单和状态视图。
+- 运行数据历史记录及告警规则。
+- 受控的设备配置模型和操作审计记录。
 
-## 0.4.x — Protocol adapters
+## 0.4.x — 协议适配能力
 
-Planned:
+**计划实现：**
 
-- MQTT integration where required.
-- SNMP and Modbus TCP adapters.
-- Adapter capability discovery and normalized data model.
+- 按业务需要集成 MQTT。
+- 增加 SNMP 和 Modbus TCP 适配器。
+- 增加适配器能力发现机制和统一数据模型。
 
-## 0.5.x — Platform portability
+## 0.5.x — 平台可移植性
 
-Planned:
+**计划实现：**
 
-- Hardware abstraction and platform adapters.
-- Validation on additional MIPS, ARM, and RISC-V devices.
-- Build and release automation.
+- 建立硬件抽象层和平台适配器。
+- 在更多 MIPS、ARM 和 RISC-V 设备上开展兼容性验证。
+- 建立构建与版本发布自动化流程。
 
-## 1.0 — Product hardening
+## 1.0 — 产品化与工程加固
 
-Planned:
+**计划实现：**
 
-- Secure provisioning and credential rotation.
-- Signed update packages and rollback strategy.
-- Resource, security, and long-duration stability testing.
-- Versioned compatibility and deployment documentation.
+- 安全的设备初始化与凭据轮换机制。
+- 软件更新包签名及失败回滚策略。
+- 资源占用、安全性和长时间稳定性测试。
+- 版本化兼容性管理和标准化部署文档。
