@@ -1,6 +1,6 @@
 #!/bin/sh
 
-# EdgeNode Agent 0.1.4
+# EdgeNode Agent 0.1.5
 # Platform: OpenWrt / BusyBox ash
 #
 # 输出：单个 JSON 对象到 stdout。
@@ -10,7 +10,7 @@
 
 PATH=/usr/sbin:/usr/bin:/sbin:/bin
 
-AGENT_VERSION="0.1.4"
+AGENT_VERSION="0.1.5"
 
 # 路径可通过环境变量覆盖，用于自动化测试和非标准分区布局。
 # 远程客户端无法注入这些变量：CGI 只会把请求头映射为 HTTP_* 环境变量。

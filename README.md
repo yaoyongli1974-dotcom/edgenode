@@ -8,11 +8,11 @@ EdgeNode 是面向嵌入式 Linux 设备的轻量级边缘网关代理与管理�
 
 ## 当前版本基线
 
-**版本：0.1.4 — 已完成设备验证的技术原型**
+**版本：0.1.5 — 已完成设备验证的技术原型**
 
-> 0.1.4 为修复版本（JSON 转义、ZeroTier 解析、API 响应加固），已在 Cudy TR1200 v1 上部署复验并通过整机重启验证。仓库现有 38 项脚本级回归断言，在 GitHub Actions 上对 sh / dash / bash / busybox ash 四种解释器持续验证。详见 `CHANGELOG.md` 与 `docs/testing.md`。
+> 0.1.5 为工程化收尾版本：新增 CI、Makefile、安装/卸载脚本、HEAD 支持与 MIT 许可证，采集逻辑与输出 schema 与 0.1.4 一致。0.1.4 的修复（JSON 转义、ZeroTier 解析、API 响应加固）已在 Cudy TR1200 v1 上部署复验并通过整机重启验证。仓库现有 38 项脚本级回归断言，在 GitHub Actions 上对 sh / dash / bash / busybox ash 四种解释器持续验证。详见 `CHANGELOG.md` 与 `docs/testing.md`。
 
-EdgeNode 0.1.4 原型已在运行 OpenWrt 25.12.6 的 Cudy TR1200 v1 上完成验证（ramips/mt76x8，MIPS）。这是一个经过单设备验证的技术原型，并非已经具备生产部署条件的多平台正式版本。
+EdgeNode 0.1.5 原型已在运行 OpenWrt 25.12.6 的 Cudy TR1200 v1 上完成验证（ramips/mt76x8，MIPS）。这是一个经过单设备验证的技术原型，并非已经具备生产部署条件的多平台正式版本。
 
 已实现并完成测试的功能：
 

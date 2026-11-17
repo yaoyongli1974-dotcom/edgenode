@@ -1,6 +1,6 @@
 #!/bin/sh
 
-# EdgeNode 卸载脚本 0.1.4
+# EdgeNode 卸载脚本 0.1.5
 # 目标平台：OpenWrt / BusyBox ash（POSIX sh，无 bashism）。
 #
 # 只停止/删除 EdgeNode 自己的独立 uhttpd 服务（edgenode-api）。

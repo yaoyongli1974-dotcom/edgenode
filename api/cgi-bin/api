@@ -1,6 +1,6 @@
 #!/bin/sh
 
-# EdgeNode 本地只读 API (CGI) 0.1.4
+# EdgeNode 本地只读 API (CGI) 0.1.5
 # 仅接受 GET/HEAD + Bearer Token；不提供 Shell 或任意命令执行能力。
 # HEAD 与 GET 走完全相同的流程，只是不输出响应体（Content-Length 保持一致）。
 

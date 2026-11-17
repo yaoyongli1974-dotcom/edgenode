@@ -14,13 +14,14 @@ EdgeNode 的目标是构建面向嵌入式 Linux 设备的轻量级边缘网关�
 
 ## 当前原型已实现内容
 
-EdgeNode 0.1.3 当前包含：
+EdgeNode 0.1.5 当前包含：
 
 - 基于 BusyBox ash 的 Shell Agent。
 - 系统与网络运行数据采集。
 - ZeroTier 命令行状态采集。
-- 本地只读 CGI API。
+- 本地只读 CGI API（GET / HEAD）。
 - 由 procd 监管的独立 uhttpd 服务。
+- 幂等安装/卸载脚本与 GitHub Actions 回归流水线。
 
 当前实现仅在一台 Cudy TR1200 v1 设备上完成验证，尚未完整实现上述逻辑架构。
 

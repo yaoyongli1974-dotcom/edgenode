@@ -22,6 +22,13 @@ API="$ROOT/api/cgi-bin/api"
 # 验证跨 shell 兼容性（echo/printf、read 字段切分等行为差异）。
 SH_CMD="${EN_SH:-sh}"
 
+# 期望版本直接取自被测脚本，发版时不必同步修改测试。
+EXPECTED_VERSION=$(sed -n 's/^AGENT_VERSION="\([^"]*\)".*/\1/p' "$AGENT")
+if [ -z "$EXPECTED_VERSION" ]; then
+    printf '无法从 %s 解析 AGENT_VERSION\n' "$AGENT" >&2
+    exit 2
+fi
+
 PASS=0
 FAIL=0
 
@@ -174,10 +181,10 @@ else
     no "agent 输出是合法 JSON" "json.load 失败"
 fi
 
-if [ "$(printf '%s' "$OUT" | json_get agent.version)" = "0.1.4" ]; then
-    ok "agent 上报版本 0.1.4"
+if [ "$(printf '%s' "$OUT" | json_get agent.version)" = "$EXPECTED_VERSION" ]; then
+    ok "agent 上报版本 $EXPECTED_VERSION"
 else
-    no "agent 上报版本 0.1.4" "实际: $(printf '%s' "$OUT" | json_get agent.version)"
+    no "agent 上报版本 $EXPECTED_VERSION" "实际: $(printf '%s' "$OUT" | json_get agent.version)"
 fi
 
 if [ "$(printf '%s' "$OUT" | json_get device.model)" = 'Evil "Gateway" \ Model' ]; then

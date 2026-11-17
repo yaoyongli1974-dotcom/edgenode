@@ -2,9 +2,9 @@
 
 本文件记录项目各版本的重要变更。
 
-## [未发布]
+## [0.1.5] - 2026-11-17
 
-Agent 版本号仍为 `0.1.4`（本次未改动采集逻辑与输出 schema），以下为仓库工程化与 API 行为变更。
+工程化收尾版本：采集逻辑与输出 schema 与 0.1.4 完全一致，变更集中在仓库工程化、安装方式与 API 的 HEAD 支持。
 
 ### 新增
 
@@ -20,13 +20,16 @@ Agent 版本号仍为 `0.1.4`（本次未改动采集逻辑与输出 schema）�
 
 - Agent 枚举网络接口改用 `/sys/class/net/*` glob，替代 `for … in $(ls …)`（消除 shellcheck SC2045）；输出与旧实现逐字节一致。
 - 回归断言由 31 项增至 38 项，新增 HEAD 相关覆盖；`tests/run-tests.sh` 与两个安装脚本均通过 `shellcheck -s sh` 零告警。
+- 版本号统一升至 `0.1.5`（Agent、CGI、安装/卸载脚本头部注释）；测试改为从 `AGENT_VERSION` 读取期望版本，发版时不再需要同步修改断言。
 - 文档：README 增加 CI 徽章、快速开始与目录说明；部署指南增加安装/卸载脚本章节；API 设计、安全说明、测试记录与路线图同步更新。
 
 ### 验证情况
 
 - 脚本级：`make test-all` 四种解释器各 38 项全部通过；`make lint` 对 agent、api、tests、install、uninstall 五个脚本零告警。
+- CI：GitHub Actions run 44099746973 全绿——`shell-tests` 矩阵（sh / dash / bash / busybox ash）各 38 通过 0 失败，`shellcheck` job 对五个脚本零告警。
 - 设备级：在 Cudy TR1200 v1（OpenWrt 25.12.6）上用 `make dist` 产物走完整链路复验——安装、卸载（保留数据）、再安装均退出码 0；部署文件与仓库 sha256 一致；已有 Token 与设备标识保持不变；系统 uhttpd（pid 2290）全程未受影响。
 - HEAD 行为在设备上用原始 HTTP 报文验证：HEAD 响应共 150 字节并以 `\r\n\r\n` 结束（无 body），响应头与 GET 逐字节相同；未授权 HEAD 同样无 body。
+- 发版复验：版本号升至 0.1.5 后重新打包并在同一台设备走安装链路，部署文件与仓库 sha256 一致，API 上报 `agent.version=0.1.5`，已有 Token 与设备标识不变，GET/HEAD/405 行为与上述一致。
 
 ### 已知限制
 

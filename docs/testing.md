@@ -10,7 +10,7 @@
 | CPU 架构 | MIPS 24KEc |
 | OpenWrt 架构标识 | `mipsel_24kc` |
 | Shell 环境 | BusyBox ash |
-| Agent | 0.1.4（0.1.3 的结果仍见本节下方历史记录） |
+| Agent | 0.1.5（0.1.3 / 0.1.4 的结果仍见本节下方历史记录） |
 | API | 通过独立 uhttpd/procd 服务提供的只读 CGI 接口 |
 
 以上结果仅说明该设备与固件组合已完成测试，不能据此认定所有 OpenWrt 设备均兼容。
@@ -97,6 +97,8 @@
 | POST | 405 | 响应头含 `Allow: GET, HEAD` |
 | 无 Token / 错误 Token / 未知路由 | 401 / 401 / 404 | |
 | 接口枚举改为 glob 后输出一致 | 无差异 | 新旧 agent 的 `network`、`device` 段 `cmp` 完全相同 |
+| 0.1.5 发版复验 | 通过 | 版本号升级后重新 `make dist` → 安装：agent/api sha256 与仓库一致（`5611c3c9…` / `5226131b…`），API 上报 `agent.version=0.1.5`，Token md5 不变，GET 1262 / HEAD 150 字节，POST 405 带 `Allow: GET, HEAD`，系统 uhttpd pid 2290 不变 |
+| GitHub Actions | 通过 | run 44099746973：sh / dash / bash / busybox ash 各 38 通过 0 失败，shellcheck 对五个脚本零告警 |
 
 设备 `/tmp` 中的 tarball 与解包目录已在复验后清理；`/overlay` 使用率 43%。
 

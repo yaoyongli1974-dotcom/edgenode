@@ -1,6 +1,6 @@
 #!/bin/sh
 
-# EdgeNode 安装脚本 0.1.4
+# EdgeNode 安装脚本 0.1.5
 # 目标平台：OpenWrt / BusyBox ash（POSIX sh，无 bashism）。
 #
 # 只部署 EdgeNode 自己的文件，并管理独立的 uhttpd 实例（procd）。
