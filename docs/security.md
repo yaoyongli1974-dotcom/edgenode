@@ -1,32 +1,32 @@
-# Security Notes
+# EdgeNode 安全说明
 
-## Current controls
+## 当前已实现的安全控制
 
-- Local API requires a Bearer token.
-- Only GET is accepted; other HTTP methods are rejected.
-- Unknown routes return 404.
-- The API does not expose a shell or arbitrary command execution endpoint.
-- The API runs on a dedicated local listener at 192.168.1.1:18080.
-- The existing system uhttpd service and its configuration were left unchanged during prototype validation.
-- The API token is stored separately from the agent source.
+- 本地 API 必须通过 Bearer Token 认证。
+- API 仅接受 GET 请求，其他 HTTP 请求方法均被拒绝。
+- 未知 API 路由返回 404。
+- API 不提供 Shell 访问或任意命令执行接口。
+- API 运行在独立的本地监听地址 `192.168.1.1:18080`。
+- 原型验证期间未修改系统原有 uhttpd 服务及其配置。
+- API Token 与 Agent 源码分开存储。
 
-## Repository hygiene
+## 代码仓库安全要求
 
-Never commit:
+以下信息严禁提交到代码仓库：
 
-- API tokens or authorization headers.
-- Device-specific UUIDs or other production device identifiers.
-- ZeroTier network IDs, node credentials, private keys, or real network topology.
-- Private certificates, signing keys, passwords, or environment files.
-- Unredacted device dumps that reveal infrastructure details.
+- API Token、认证请求头及其他访问凭据。
+- 设备专属 UUID 或其他真实生产设备标识。
+- ZeroTier 网络 ID、节点凭据、私钥或真实网络拓扑信息。
+- 私有证书、签名密钥、密码和环境配置文件。
+- 未脱敏且可能暴露基础设施信息的设备运行数据。
 
-Use synthetic identifiers and sanitized sample payloads in documentation.
+文档和示例数据应使用虚构标识，并在发布前完成脱敏检查。
 
-## Known limitations
+## 已知安全限制
 
-- The current local API uses HTTP, not HTTPS.
-- Token rotation and per-device credential provisioning are not implemented.
-- Cloud authentication, signed updates, secure configuration delivery, and OTA rollback are not implemented.
-- The current prototype has only been validated on one hardware model.
+- 当前本地 API 使用 HTTP，尚未启用 HTTPS。
+- 尚未实现 Token 轮换和逐设备凭据配置机制。
+- 尚未实现云端身份认证、更新包签名、安全配置下发和 OTA 回滚。
+- 当前原型仅在一种硬件型号上完成验证。
 
-Do not expose the local API to untrusted networks. Production deployment requires a threat model, secure provisioning, transport protection, credential rotation, and update integrity controls.
+请勿将本地 API 暴露给不可信网络。生产部署前必须完成威胁建模、安全凭据初始化、传输链路保护、凭据轮换和软件更新完整性控制。
