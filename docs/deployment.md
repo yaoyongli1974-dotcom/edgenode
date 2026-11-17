@@ -36,6 +36,20 @@
 
 同时应保护上级配置目录，防止非特权用户读取设备凭据。
 
+## 运行时依赖
+
+当前 API 与 Agent 依赖设备上已有的以下组件：
+
+| 组件 | 用途 | 说明 |
+|---|---|---|
+| uhttpd | 提供 CGI 与 HTTP 服务 | 使用独立实例，不修改系统原有配置 |
+| jsonfilter | API 按路径投影 JSON 字段 | OpenWrt base 自带（ubox） |
+| md5sum | API 比较 Bearer Token 摘要 | BusyBox 自带 |
+| ip、df、awk、tr、date | Agent 采集设备状态 | BusyBox 自带 |
+| zerotier-cli | 可选的 ZeroTier 状态采集 | 未安装时 `zerotier` 字段为空数组 |
+
+缺少 `jsonfilter` 时，`/v1/device` 等投影接口会返回 `500 {"error":"internal_error"}`，具体原因写入服务端日志。
+
 ## 服务运行方式
 
 原型通过 procd 管理一个独立的 uhttpd 进程：

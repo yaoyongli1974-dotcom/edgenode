@@ -1,9 +1,52 @@
 #!/bin/sh
 
-# EdgeNode Agent 0.1.3
+# EdgeNode Agent 0.1.4
 # Platform: OpenWrt / BusyBox ash
+#
+# 输出：单个 JSON 对象到 stdout。
+# 所有字符串字段都经过 json_escape()，保证设备型号、接口名、ZeroTier
+# 网络名中的双引号或反斜杠不会产生非法 JSON。
+# 所有数值字段都有兜底，采集失败时输出 0 而不是空值。
 
 PATH=/usr/sbin:/usr/bin:/sbin:/bin
+
+AGENT_VERSION="0.1.4"
+
+# 路径可通过环境变量覆盖，用于自动化测试和非标准分区布局。
+# 远程客户端无法注入这些变量：CGI 只会把请求头映射为 HTTP_* 环境变量。
+OPENWRT_RELEASE="${EN_OPENWRT_RELEASE:-/etc/openwrt_release}"
+DEVICE_ID_FILE="${EN_DEVICE_ID_FILE:-/overlay/edgenode/etc/device-id}"
+SYSINFO_MODEL="${EN_SYSINFO_MODEL:-/tmp/sysinfo/model}"
+
+# 结果写入全局 JSON_ESC。
+# 不用 $(json_escape ...) 取值：命令替换会 fork 子 shell，41 个字段在 MIPS 上
+# 会多花约 600ms（实测 550ms -> 1550ms）。快路径只用内建命令，零 fork。
+json_escape() {
+    _val="$1"
+
+    case "$_val" in
+        # 快路径：绝大多数值不含特殊字符，直接返回，不 fork 任何进程。
+        *[\\\"[:cntrl:]]*)
+            JSON_ESC=$(printf '%s' "$_val" | awk '
+            {
+                out = ""
+                n = length($0)
+                for (i = 1; i <= n; i++) {
+                    c = substr($0, i, 1)
+                    if (c == "\\") out = out "\\\\"
+                    else if (c == "\"") out = out "\\\""
+                    else if (c == "\t") out = out "\\t"
+                    else if (c ~ /[[:cntrl:]]/) continue
+                    else out = out c
+                }
+                printf "%s", out
+            }')
+            ;;
+        *)
+            JSON_ESC="$_val"
+            ;;
+    esac
+}
 
 get_interface() {
     ip -4 -o addr show dev "$1" 2>/dev/null |
@@ -11,68 +54,171 @@ get_interface() {
 }
 
 get_load() {
-    awk '{print $1}' /proc/loadavg
+    v=""
+    if [ -r /proc/loadavg ]; then
+        v=$(awk '{print $1; exit}' /proc/loadavg)
+    fi
+
+    case "$v" in
+        ''|*[!0-9.]*) v=0 ;;
+    esac
+
+    printf '%s' "$v"
 }
 
 get_memory() {
-    awk '
-    /^MemTotal:/ {total=$2}
-    /^MemAvailable:/ {available=$2}
-    END {
-        printf "{\"total_kb\":%d,\"available_kb\":%d}",
-        total,available
-    }' /proc/meminfo
+    if [ -r /proc/meminfo ]; then
+        awk '
+        /^MemTotal:/ {total=$2}
+        /^MemAvailable:/ {available=$2}
+        END {
+            printf "{\"total_kb\":%d,\"available_kb\":%d}",
+            total+0,available+0
+        }' /proc/meminfo
+    else
+        printf '{"total_kb":0,"available_kb":0}'
+    fi
 }
 
 get_storage() {
-    df -k / 2>/dev/null | awk '
+    v=$(df -k / 2>/dev/null | awk '
     NR==2 {
         printf "{\"total_kb\":%d,\"used_kb\":%d,\"available_kb\":%d}",
-        $2,$3,$4
-    }'
+        $2+0,$3+0,$4+0
+    }')
+
+    [ -n "$v" ] || v='{"total_kb":0,"used_kb":0,"available_kb":0}'
+    printf '%s' "$v"
 }
 
+get_cpu_model() {
+    [ -r /proc/cpuinfo ] || return 0
+    awk -F ': *' '/^cpu model/ {print $2; exit}' /proc/cpuinfo
+}
+
+get_device_model() {
+    if [ -r "$SYSINFO_MODEL" ]; then
+        tr -d '\r\n' < "$SYSINFO_MODEL"
+        return 0
+    fi
+
+    # /tmp 是 tmpfs，重启后该文件可能缺失；退回到持久化板级信息。
+    if [ -r /etc/board.json ] && command -v jsonfilter >/dev/null 2>&1; then
+        v=$(jsonfilter -i /etc/board.json -e '@.model.name' 2>/dev/null)
+        if [ -n "$v" ]; then
+            printf '%s' "$v"
+            return 0
+        fi
+    fi
+
+    printf 'Unknown'
+}
+
+get_uptime() {
+    v=""
+    if [ -r /proc/uptime ]; then
+        v=$(awk '{printf "%d", $1; exit}' /proc/uptime)
+    fi
+
+    case "$v" in
+        ''|*[!0-9]*) v=0 ;;
+    esac
+
+    printf '%s' "$v"
+}
+
+get_timestamp() {
+    date -u '+%Y-%m-%dT%H:%M:%SZ' 2>/dev/null
+}
+
+get_device_id() {
+    if [ -s "$DEVICE_ID_FILE" ]; then
+        tr -d '\r\n' < "$DEVICE_ID_FILE"
+    else
+        printf ''
+    fi
+}
+
+get_version_info() {
+    RELEASE=""
+    ARCH=""
+
+    if [ -r "$OPENWRT_RELEASE" ]; then
+        # shellcheck disable=SC1090
+        . "$OPENWRT_RELEASE"
+        RELEASE="${DISTRIB_RELEASE:-}"
+        ARCH="${DISTRIB_ARCH:-}"
+    fi
+
+    [ -n "$ARCH" ] || ARCH="$(uname -m 2>/dev/null)"
+}
+
+find_zerotier_cli() {
+    for c in zerotier-cli /usr/sbin/zerotier-cli /usr/bin/zerotier-cli; do
+        case "$c" in
+            */*)
+                if [ -x "$c" ]; then
+                    printf '%s' "$c"
+                    return 0
+                fi
+                ;;
+            *)
+                p=$(command -v "$c" 2>/dev/null)
+                if [ -n "$p" ]; then
+                    printf '%s' "$p"
+                    return 0
+                fi
+                ;;
+        esac
+    done
+    return 1
+}
+
+# 解析 zerotier-cli listnetworks 的文本输出。
+# 不按固定列号取值：网络名可能含空格，因此把 MAC 列作为锚点，
+# 并把它前面所有字段拼回网络名。
 get_zerotier() {
-    /usr/bin/zerotier-cli listnetworks 2>/dev/null |
-    awk '
+    [ -n "$ZT_CLI" ] || return 0
+
+    "$ZT_CLI" listnetworks 2>/dev/null | awk '
     $1=="200" && $2=="listnetworks" {
         if (length($3)!=16 || tolower($3) !~ /^[0-9a-f]+$/)
             next
 
-        if ($6=="OK") {
-            nwid=$3
-            name=$4
-            mac=$5
-            status=$6
-            type=$7
-            dev=$8
-            ips=$9
+        mac_i=0
+        for (i=4; i<=NF; i++) {
+            if (tolower($i) ~ /^([0-9a-f][0-9a-f]:){5}[0-9a-f][0-9a-f]$/) {
+                mac_i=i
+                break
+            }
         }
-        else if ($5=="NOT_FOUND") {
-            nwid=$3
-            name=""
-            mac=$4
-            status=$5
-            type=$6
-            dev=$7
-            ips=$8
-        }
-        else {
+        if (!mac_i)
             next
-        }
 
-        if (count++) printf ","
+        name=""
+        for (i=4; i<mac_i; i++)
+            name = name (i>4 ? " " : "") $i
 
-        printf "{"
-        printf "\"network_id\":\"%s\",",nwid
-        printf "\"name\":\"%s\",",name
-        printf "\"mac\":\"%s\",",mac
-        printf "\"status\":\"%s\",",status
-        printf "\"type\":\"%s\",",type
-        printf "\"interface\":\"%s\",",dev
-        printf "\"ips\":\"%s\"",ips
-        printf "}"
-    }'
+        printf "%s\037%s\037%s\037%s\037%s\037%s\037%s\n",
+            $3, name, $mac_i, $(mac_i+1), $(mac_i+2), $(mac_i+3), $(mac_i+4)
+    }' | {
+        first=1
+        while IFS="$(printf '\037')" read -r nwid name mac status type dev ips; do
+            [ "$first" = 1 ] || printf ','
+            first=0
+
+            json_escape "$nwid";   v_nwid="$JSON_ESC"
+            json_escape "$name";   v_name="$JSON_ESC"
+            json_escape "$mac";    v_mac="$JSON_ESC"
+            json_escape "$status"; v_status="$JSON_ESC"
+            json_escape "$type";   v_type="$JSON_ESC"
+            json_escape "$dev";    v_dev="$JSON_ESC"
+            json_escape "$ips";    v_ips="$JSON_ESC"
+
+            printf '{"network_id":"%s","name":"%s","mac":"%s","status":"%s","type":"%s","interface":"%s","ips":"%s"}' \
+                "$v_nwid" "$v_name" "$v_mac" "$v_status" "$v_type" "$v_dev" "$v_ips"
+        done
+    }
 }
 
 get_networks() {
@@ -81,69 +227,66 @@ get_networks() {
     for iface in $(ls /sys/class/net 2>/dev/null); do
         addr=$(get_interface "$iface")
 
-        [ "$first" = 1 ] || printf ","
-        first=0
+        if [ "$first" = 1 ]; then
+            printf '{'
+            first=0
+        else
+            printf ',{'
+        fi
 
-        printf "{\"name\":\"%s\",\"ipv4\":\"%s\"}" "$iface" "$addr"
+        json_escape "$iface"; v_iface="$JSON_ESC"
+        json_escape "$addr";  v_addr="$JSON_ESC"
+
+        printf '"name":"%s","ipv4":"%s"}' \
+            "$v_iface" "$v_addr"
     done
 }
 
-get_cpu_model() {
-    awk -F ': *' '/^cpu model/ {print $2; exit}' /proc/cpuinfo
-}
-
-get_device_model() {
-    cat /tmp/sysinfo/model 2>/dev/null || echo "Unknown"
-}
-
-get_uptime() {
-    awk '{printf "%d",$1}' /proc/uptime
-}
-
-get_timestamp() {
-    date -u '+%Y-%m-%dT%H:%M:%SZ'
-}
-
-get_device_id() {
-    IDFILE=/overlay/edgenode/etc/device-id
-
-    if [ -s "$IDFILE" ]; then
-        tr -d '\r\n' < "$IDFILE"
-    else
-        echo ""
-    fi
-}
-
-get_version_info() {
-    . /etc/openwrt_release
-    RELEASE="$DISTRIB_RELEASE"
-    ARCH="$DISTRIB_ARCH"
-}
+if [ "${EN_ZT_CLI+set}" = set ]; then
+    case "$EN_ZT_CLI" in
+        ''|none)
+            ZT_CLI=""
+            ;;
+        */*)
+            ZT_CLI=""
+            [ -x "$EN_ZT_CLI" ] && ZT_CLI="$EN_ZT_CLI"
+            ;;
+        *)
+            ZT_CLI=$(command -v "$EN_ZT_CLI" 2>/dev/null)
+            ;;
+    esac
+else
+    ZT_CLI=$(find_zerotier_cli)
+fi
 
 get_version_info
 
 DEVICE_ID=$(get_device_id)
 TIMESTAMP=$(get_timestamp)
+DEVICE_MODEL=$(get_device_model)
+CPU_MODEL=$(get_cpu_model)
 
-echo "{"
-echo "\"agent\":{\"name\":\"EdgeNode\",\"version\":\"0.1.3\"},"
-echo "\"device\":{"
-echo "\"device_id\":\"$DEVICE_ID\","
-echo "\"model\":\"$(get_device_model)\","
-echo "\"cpu\":\"$(get_cpu_model)\","
-echo "\"architecture\":\"$ARCH\","
-echo "\"firmware\":\"$RELEASE\""
-echo "},"
-echo "\"system\":{"
-echo "\"timestamp\":\"$TIMESTAMP\","
-echo "\"time_valid\":false,"
-echo "\"uptime_seconds\":$(get_uptime),"
-echo "\"load_1m\":$(get_load),"
-echo "\"memory\":$(get_memory),"
-echo "\"storage\":$(get_storage)"
-echo "},"
-echo "\"network\":{"
-echo "\"interfaces\":[$(get_networks)],"
-echo "\"zerotier\":[$(get_zerotier)]"
-echo "}"
-echo "}"
+# 这里必须用 printf 而不是 echo：部分 shell（如 dash）的 echo 会解释
+# 反斜杠转义，把已经转义好的 JSON 破坏掉。printf 只解释格式串本身。
+json_escape "$AGENT_VERSION"; v_version="$JSON_ESC"
+json_escape "$DEVICE_ID";     v_device_id="$JSON_ESC"
+json_escape "$DEVICE_MODEL";  v_model="$JSON_ESC"
+json_escape "$CPU_MODEL";     v_cpu="$JSON_ESC"
+json_escape "$ARCH";          v_arch="$JSON_ESC"
+json_escape "$RELEASE";       v_firmware="$JSON_ESC"
+json_escape "$TIMESTAMP";     v_timestamp="$JSON_ESC"
+
+printf '{\n'
+printf '"agent":{"name":"EdgeNode","version":"%s"},\n' "$v_version"
+printf '"device":{"device_id":"%s","model":"%s","cpu":"%s","architecture":"%s","firmware":"%s"},\n' \
+    "$v_device_id" "$v_model" "$v_cpu" "$v_arch" "$v_firmware"
+printf '"system":{"timestamp":"%s","time_valid":false,"uptime_seconds":%s,"load_1m":%s,"memory":%s,"storage":%s},\n' \
+    "$v_timestamp" \
+    "$(get_uptime)" \
+    "$(get_load)" \
+    "$(get_memory)" \
+    "$(get_storage)"
+printf '"network":{"interfaces":[%s],"zerotier":[%s]}\n' \
+    "$(get_networks)" \
+    "$(get_zerotier)"
+printf '}\n'

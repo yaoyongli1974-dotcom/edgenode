@@ -29,6 +29,8 @@ API 同时接受根路径请求，并将其映射为完整状态数据响应。
 - 请求路径不存在：返回 `404 Not Found`。
 - 请求成功：返回 `200 OK`。
 - 响应包含 `Cache-Control: no-store`，避免客户端或中间缓存保存状态数据。
+- 响应包含 `Content-Length` 与 `X-Content-Type-Options: nosniff`。
+- 内部错误统一返回 `500 {"error":"internal_error"}`，具体原因只写入服务端日志。
 
 ## 当前限制
 

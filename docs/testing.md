@@ -1,4 +1,4 @@
-# EdgeNode 0.1.3 测试记录
+# EdgeNode 测试记录
 
 ## 测试环境
 
@@ -10,7 +10,7 @@
 | CPU 架构 | MIPS 24KEc |
 | OpenWrt 架构标识 | `mipsel_24kc` |
 | Shell 环境 | BusyBox ash |
-| Agent | 0.1.3 |
+| Agent | 0.1.4（0.1.3 的结果仍见本节下方历史记录） |
 | API | 通过独立 uhttpd/procd 服务提供的只读 CGI 接口 |
 
 以上结果仅说明该设备与固件组合已完成测试，不能据此认定所有 OpenWrt 设备均兼容。
@@ -49,11 +49,61 @@
 - 由 procd 管理的 EdgeNode 独立 uhttpd 实例：已验证正常运行。
 - 独立服务监听地址：`192.168.1.1:18080`。
 - 验证期间，系统原有监听 80/443 端口的 uhttpd 服务保持不变。
-- 已配置服务启用；尚无完整重启设备后自动启动的测试记录。
+- 已配置服务启用；0.1.4 复验时完成整机重启，独立实例随系统自动启动（详见下方 0.1.4 复验记录）。
+
+## 0.1.4 设备复验记录（2026-11-17）
+
+在 Cudy TR1200 v1 上完成部署与复验，设备配置与 0.1.3 相同。旧版文件保留为
+`/overlay/edgenode/bin/edgenode-agent.014.pre.bak` 与
+`/overlay/edgenode/www/cgi-bin/api.014.pre.bak`，可用于回滚。
+
+| 检查项 | 结果 | 说明 |
+|---|---|---|
+| 部署文件与仓库文件一致 | 通过 | sha256 逐字节一致 |
+| Agent 输出的 JSON 可由设备 `jsonfilter` 解析 | 通过 | 完整文档可解析，字段可逐项查询 |
+| 输出字段与 0.1.3 逐项对比 | 无差异 | 已排除版本号、时间戳、运行时长、负载与内存瞬时值 |
+| ZeroTier 网络名含空格 | 通过 | 夹具注入；同一夹具下旧版解析 1/2 条，新版 2/2 条且名称完整 |
+| 型号含双引号与反斜杠 | 通过 | `jsonfilter` 取回值与输入逐字节一致 |
+| ZeroTier CLI 探测 | 通过 | 本设备实际为 `/usr/bin/zerotier-cli`（指向 `zerotier-one`） |
+| 无 Token / 错误 Token | 401 | |
+| POST / HEAD 请求 | 405 | 只读接口不接受 HEAD，监控探针需使用 GET |
+| 未知路由 | 404 | |
+| 五个接口与根路径 | 200 | |
+| `Content-Length` 与实际字节数一致 | 通过 | 实测 1113 = 1113 |
+| procd 停止 / 启动 | 通过 | 18080 随服务启停；系统 uhttpd（pid 2098）全程未受影响 |
+| 开机自启（整机重启） | 通过 | 重启后 `boot_id` 变化、uptime 归零；独立 uhttpd 自动监听 18080；系统 uhttpd 同时正常监听 80/443；overlay 文件与 sha256 不变 |
+| 性能 | 无回退 | 新旧版本交替 15 轮：旧版累计 9s，新版累计 8s |
+
+复验中发现并修复的问题：初版实现为每个字符串字段调用一次转义函数，在 MIPS 设备上把单次采集从约 575ms 拖慢到约 1550ms。改为内建命令快路径后，耗时回到与 0.1.3 持平。
+
+## 自动化回归测试（0.1.4 起）
+
+`tests/run-tests.sh` 提供脚本级回归测试，不依赖 OpenWrt 硬件，可在任意具备 `sh` 与 `python3` 的机器上执行：
+
+```sh
+sh tests/run-tests.sh
+```
+
+可通过 `EN_SH` 指定被测脚本的解释器，用于验证跨 shell 兼容性（`echo`、`read` 字段切分等行为在不同 shell 中并不一致）：
+
+```sh
+EN_SH=dash sh tests/run-tests.sh
+EN_SH="busybox ash" sh tests/run-tests.sh
+```
+
+覆盖范围：
+
+- Agent 输出的 JSON 合法性、字符串转义（型号含双引号与反斜杠）、数值兜底。
+- `openwrt_release` 或 `device-id` 缺失时的降级行为。
+- ZeroTier 网络名含空格时的完整解析（0.1.3 的回归缺陷）、`NOT_FOUND` 记录、无 CLI 时的空数组。
+- API 认证（401）、方法限制（405）、未知路由（404）、内部错误（500 且对外不可区分）。
+- API 响应 `Content-Length` 与实际字节数一致。
+
+测试通过 `EN_*` 环境变量注入夹具路径，不会读写设备上的真实配置。若环境中没有 `jsonfilter`，测试会使用 `tests/fixtures/jsonfilter_stub.py` 作为等价实现；在 OpenWrt 设备上执行时则使用真实 `jsonfilter`。
 
 ## 已知测试缺口
 
-- 尚未建立自动化测试套件或持续集成流水线。
+- 回归测试仅覆盖脚本与 API 行为，未接入持续集成流水线。
 - 尚未开展负载、耐久性和资源压力测试。
 - 尚未进行 TLS 接口或远程暴露场景验证。
 - 尚未完成多设备、多 CPU 架构兼容性验证。
