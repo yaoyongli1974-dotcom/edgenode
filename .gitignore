@@ -1,0 +1,37 @@
+# Secrets and credentials
+*.token
+*.secret
+*.pem
+*.key
+*.p12
+*.pfx
+.env
+.env.*
+secrets/
+credentials/
+device-id
+
+# Runtime data and logs
+*.log
+*.pid
+*.sock
+*.db
+*.sqlite
+cache/
+tmp/
+
+# Editor and OS files
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Build artifacts
+build/
+dist/
+out/
+*.o
+*.a
+*.so
