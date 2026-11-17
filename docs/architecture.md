@@ -1,33 +1,39 @@
-# EdgeNode Architecture
+# EdgeNode 总体架构
 
-## Product direction
+## 产品方向
 
-EdgeNode is intended to be a lightweight embedded Linux edge-gateway agent and management platform. The initial implementation is a shell prototype for OpenWrt; the target architecture is broader and must not be confused with features already implemented.
+EdgeNode 的目标是构建面向嵌入式 Linux 设备的轻量级边缘网关代理与管理平台。当前实现是面向 OpenWrt 的 Shell 技术原型。规划中的目标架构范围更广，不能将架构规划误认为当前已经实现的功能。
 
-## Logical architecture
+## 逻辑架构
 
-1. **Core Agent** — device identity, lifecycle, telemetry collection, local state, and task coordination.
-2. **Hardware / Platform Abstraction** — normalizes operating-system, CPU, storage, network, and vendor-specific details.
-3. **Protocol Adapters** — optional integrations such as MQTT, SNMP, and Modbus TCP.
-4. **Cloud Connector** — outbound secure registration, heartbeat, telemetry upload, and later controlled management operations.
-5. **Management Platform** — device registry, last-seen state, telemetry storage, fleet views, and policy management.
+1. **核心代理（Core Agent）** — 负责设备身份识别、生命周期管理、运行数据采集、本地状态维护和任务协调。
+2. **硬件与平台抽象层（Hardware / Platform Abstraction）** — 统一不同操作系统、CPU、存储、网络及厂商平台的差异。
+3. **协议适配层（Protocol Adapters）** — 按需集成 MQTT、SNMP、Modbus TCP 等协议。
+4. **云端连接器（Cloud Connector）** — 负责安全的主动注册、心跳上报、数据上传，以及后续受控的远程管理操作。
+5. **管理平台（Management Platform）** — 负责设备注册管理、最后在线状态、运行数据存储、设备群组视图和策略管理。
 
-## Current prototype
+## 当前原型已实现内容
 
-The 0.1.3 prototype currently includes:
+EdgeNode 0.1.3 当前包含：
 
-- A BusyBox ash shell agent.
-- System and network telemetry collection.
-- ZeroTier CLI status collection.
-- A local read-only CGI API.
-- A separate uhttpd service supervised by procd.
+- 基于 BusyBox ash 的 Shell Agent。
+- 系统与网络运行数据采集。
+- ZeroTier 命令行状态采集。
+- 本地只读 CGI API。
+- 由 procd 监管的独立 uhttpd 服务。
 
-The current implementation is validated on one Cudy TR1200 v1 device. It is not yet a complete implementation of the logical architecture above.
+当前实现仅在一台 Cudy TR1200 v1 设备上完成验证，尚未完整实现上述逻辑架构。
 
-## Resource constraints
+## 资源约束与设计原则
 
-The initial target has limited RAM and flash. The design therefore favors small native utilities, bounded runtime data, low-volume logging, and outbound cloud communication. Persistent telemetry should ultimately be stored centrally rather than accumulated on small device flash.
+初始目标设备的内存和闪存资源有限，因此设计优先考虑：
 
-## Evolution
+- 使用体积小、系统开销低的原生工具。
+- 控制运行时数据规模，避免无界增长。
+- 控制日志数量和写入频率。
+- 优先采用设备主动向云端发起连接的通信方式。
+- 长期运行数据应集中存储在云端或管理平台，不应持续堆积在小容量设备闪存中。
 
-The intended evolution is to separate portable core logic from platform-specific collection, then introduce a small compiled core (planned C implementation) where it materially improves reliability, performance, and portability.
+## 后续演进方向
+
+后续计划将可移植的核心逻辑与平台专属采集逻辑分离，并在确实有利于可靠性、性能和可移植性时，引入轻量级编译型核心（计划采用 C 语言实现）。
