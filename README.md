@@ -4,11 +4,11 @@ EdgeNode is a lightweight edge-gateway agent and management platform for embedde
 
 The project is designed for resource-constrained systems such as OpenWrt routers and industrial edge gateways. Its long-term direction is a portable agent with hardware abstraction, protocol adapters, and a cloud management connector.
 
-## Current status
+## Current release baseline
 
-**Prototype: 0.1.3**
+**Version: 0.1.3 — validated prototype**
 
-The current prototype has been validated on a Cudy TR1200 v1 running OpenWrt 25.12.6 (ramips/mt76x8, MIPS). It is a device-specific proof of concept, not yet a production-ready multi-platform release.
+The 0.1.3 prototype has been validated on a Cudy TR1200 v1 running OpenWrt 25.12.6 (ramips/mt76x8, MIPS). It is a device-validated proof of concept, not yet a production-ready multi-platform release.
 
 Implemented and tested:
 
@@ -25,15 +25,25 @@ Not yet implemented: cloud registration, HTTPS heartbeat, fleet management, MQTT
 
 - `agent/` — device-side agent
 - `api/` — local HTTP API
-- `docs/` — architecture, API, security, and roadmap
+- `docs/` — architecture, API, security, deployment, testing, and roadmap
 - `examples/` — sanitized example payloads
 - `scripts/` — development and deployment helpers
+- `CHANGELOG.md` — release history
 
-Some directories may be added as implementation is exported and reviewed.
+## Documentation
+
+- [Architecture](docs/architecture.md)
+- [Local API design](docs/api-design.md)
+- [Security notes](docs/security.md)
+- [Deployment guide](docs/deployment.md)
+- [Test record](docs/testing.md)
+- [Roadmap](docs/roadmap.md)
+- [Changelog](CHANGELOG.md)
+- [Sanitized status example](examples/status.json)
 
 ## Security
 
-Never commit device-specific credentials, API tokens, private keys, real device identifiers, or network identifiers. See [Security](docs/security.md).
+Never commit device-specific credentials, API tokens, private keys, real device identifiers, or live network identifiers. The sample payload is illustrative and sanitized. See [Security](docs/security.md).
 
 ## Development platform
 
