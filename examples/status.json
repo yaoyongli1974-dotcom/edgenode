@@ -1,0 +1,51 @@
+{
+  "agent": {
+    "name": "EdgeNode",
+    "version": "0.1.3"
+  },
+  "device": {
+    "device_id": "00000000-0000-4000-8000-000000000000",
+    "model": "Example Embedded Gateway",
+    "cpu": "Example MIPS CPU",
+    "architecture": "mipsel_24kc",
+    "firmware": "OpenWrt 25.12.x"
+  },
+  "system": {
+    "timestamp": "2026-01-01T00:00:00Z",
+    "time_valid": false,
+    "uptime_seconds": 86400,
+    "load_1m": 0.12,
+    "memory": {
+      "total_kb": 65536,
+      "available_kb": 32768
+    },
+    "storage": {
+      "total_kb": 8192,
+      "used_kb": 4096,
+      "available_kb": 4096
+    }
+  },
+  "network": {
+    "interfaces": [
+      {
+        "name": "br-lan",
+        "ipv4": "192.0.2.1/24"
+      },
+      {
+        "name": "wan",
+        "ipv4": ""
+      }
+    ],
+    "zerotier": [
+      {
+        "network_id": "0000000000000000",
+        "name": "example-network",
+        "mac": "02:00:00:00:00:01",
+        "status": "OK",
+        "type": "PRIVATE",
+        "interface": "zt-example",
+        "ips": "198.51.100.10/24"
+      }
+    ]
+  }
+}
