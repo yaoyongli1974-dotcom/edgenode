@@ -1,0 +1,107 @@
+#!/bin/sh
+
+PATH=/usr/sbin:/usr/bin:/sbin:/bin
+
+TOKEN_FILE="/overlay/edgenode/etc/api.token"
+AGENT="/overlay/edgenode/bin/edgenode-agent"
+
+respond() {
+    code="$1"
+    message="$2"
+
+    printf 'Status: %s\r\n' "$code"
+    printf 'Content-Type: application/json\r\n'
+    printf 'Cache-Control: no-store\r\n'
+    printf '\r\n'
+    printf '%s\n' "$message"
+}
+
+if [ "$REQUEST_METHOD" != "GET" ]; then
+    respond "405 Method Not Allowed" '{"error":"method_not_allowed"}'
+    exit 0
+fi
+
+if [ ! -s "$TOKEN_FILE" ]; then
+    respond "500 Internal Server Error" '{"error":"token_unavailable"}'
+    exit 0
+fi
+
+EXPECTED_TOKEN="$(cat "$TOKEN_FILE")"
+AUTH_HEADER="${HTTP_AUTHORIZATION:-}"
+
+case "$AUTH_HEADER" in
+    "Bearer "*)
+        PROVIDED_TOKEN="${AUTH_HEADER#Bearer }"
+        ;;
+    *)
+        respond "401 Unauthorized" '{"error":"unauthorized"}'
+        exit 0
+        ;;
+esac
+
+if [ "$PROVIDED_TOKEN" != "$EXPECTED_TOKEN" ]; then
+    respond "401 Unauthorized" '{"error":"unauthorized"}'
+    exit 0
+fi
+
+case "$PATH_INFO" in
+    ""|"/")
+        API_PATH="/status"
+        ;;
+    "/v1/status")
+        API_PATH="/status"
+        ;;
+    "/v1/device")
+        API_PATH="/device"
+        ;;
+    "/v1/system")
+        API_PATH="/system"
+        ;;
+    "/v1/network")
+        API_PATH="/network"
+        ;;
+    "/v1/zerotier")
+        API_PATH="/zerotier"
+        ;;
+    *)
+        respond "404 Not Found" '{"error":"not_found"}'
+        exit 0
+        ;;
+esac
+
+AGENT_JSON="$("$AGENT" 2>/dev/null)"
+
+if [ -z "$AGENT_JSON" ]; then
+    respond "500 Internal Server Error" '{"error":"agent_failed"}'
+    exit 0
+fi
+
+case "$API_PATH" in
+    "/status")
+        RESULT="$AGENT_JSON"
+        ;;
+    "/device")
+        RESULT="$(printf '%s' "$AGENT_JSON" | jsonfilter -e '@.device' 2>/dev/null)"
+        ;;
+    "/system")
+        RESULT="$(printf '%s' "$AGENT_JSON" | jsonfilter -e '@.system' 2>/dev/null)"
+        ;;
+    "/network")
+        RESULT="$(printf '%s' "$AGENT_JSON" | jsonfilter -e '@.network' 2>/dev/null)"
+        ;;
+    "/zerotier")
+        RESULT="$(printf '%s' "$AGENT_JSON" | jsonfilter -e '@.network.zerotier' 2>/dev/null)"
+        ;;
+esac
+
+if [ -z "$RESULT" ]; then
+    respond "500 Internal Server Error" '{"error":"invalid_agent_data"}'
+    exit 0
+fi
+
+printf 'Content-Type: application/json\r\n'
+printf 'Cache-Control: no-store\r\n'
+printf '\r\n'
+printf '%s\n' "$RESULT"
+
+exit 0
