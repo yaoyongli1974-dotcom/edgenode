@@ -1,61 +1,61 @@
 # EdgeNode
 
-EdgeNode is a lightweight edge-gateway agent and management platform for embedded Linux devices.
+EdgeNode 是面向嵌入式 Linux 设备的轻量级边缘网关代理与管理平台。
 
-The project is designed for resource-constrained systems such as OpenWrt routers and industrial edge gateways. Its long-term direction is a portable agent with hardware abstraction, protocol adapters, and a cloud management connector.
+项目面向 OpenWrt 路由器、工业边缘网关等资源受限设备。长期目标是构建具备硬件抽象、协议适配和云端管理连接能力的可移植设备代理。
 
-## Current release baseline
+## 当前版本基线
 
-**Version: 0.1.3 — validated prototype**
+**版本：0.1.3 — 已完成设备验证的技术原型**
 
-The 0.1.3 prototype has been validated on a Cudy TR1200 v1 running OpenWrt 25.12.6 (ramips/mt76x8, MIPS). It is a device-validated proof of concept, not yet a production-ready multi-platform release.
+EdgeNode 0.1.3 原型已在运行 OpenWrt 25.12.6 的 Cudy TR1200 v1 上完成验证（ramips/mt76x8，MIPS）。这是一个经过单设备验证的技术原型，并非已经具备生产部署条件的多平台正式版本。
 
-Implemented and tested:
+已实现并完成测试的功能：
 
-- Shell-based agent reports device identity, model, CPU, architecture, firmware, uptime, load, memory, and root filesystem usage.
-- Network interface IPv4 information is collected.
-- ZeroTier network status is collected when the ZeroTier CLI is available.
-- A local HTTP API exposes read-only status endpoints.
-- API requests require a Bearer token; non-GET methods are rejected.
-- The API runs as a separate uhttpd instance under procd on 192.168.1.1:18080, without replacing the system web server.
+- 基于 Shell 的设备代理，可采集设备身份、型号、CPU、架构、固件版本、运行时间、系统负载、内存和根文件系统使用情况。
+- 采集网络接口 IPv4 信息。
+- 在设备具备 ZeroTier 命令行工具时，采集 ZeroTier 网络状态。
+- 提供本地只读 HTTP API，用于查询设备状态。
+- API 请求必须携带 Bearer Token；拒绝非 GET 请求。
+- API 由 procd 管理的独立 uhttpd 实例提供服务，监听地址为 `192.168.1.1:18080`，不替换系统原有 Web 服务。
 
-Not yet implemented: cloud registration, HTTPS heartbeat, fleet management, MQTT, SNMP/Modbus adapters, remote configuration, OTA, cross-architecture validation, and production hardening.
+尚未实现的功能：云端注册、HTTPS 心跳上报、设备群组管理、MQTT、SNMP/Modbus 协议适配、远程配置、OTA 升级、跨架构验证和生产级安全加固。
 
-## Repository layout
+## 仓库目录
 
-- `agent/` — device-side agent
-- `api/` — local HTTP API
-- `docs/` — architecture, API, security, deployment, testing, and roadmap
-- `examples/` — sanitized example payloads
-- `scripts/` — development and deployment helpers
-- `CHANGELOG.md` — release history
+- `agent/` — 设备端代理程序
+- `api/` — 本地 HTTP API
+- `docs/` — 架构、API、安全、部署、测试和路线图文档
+- `examples/` — 已脱敏的示例数据
+- `scripts/` — 开发与部署辅助脚本
+- `CHANGELOG.md` — 版本变更记录
 
-## Documentation
+## 文档
 
-- [Architecture](docs/architecture.md)
-- [Local API design](docs/api-design.md)
-- [Security notes](docs/security.md)
-- [Deployment guide](docs/deployment.md)
-- [Test record](docs/testing.md)
-- [Roadmap](docs/roadmap.md)
-- [Changelog](CHANGELOG.md)
-- [Sanitized status example](examples/status.json)
+- [总体架构](docs/architecture.md)
+- [本地 API 设计](docs/api-design.md)
+- [安全说明](docs/security.md)
+- [部署指南](docs/deployment.md)
+- [测试记录](docs/testing.md)
+- [开发路线图](docs/roadmap.md)
+- [版本变更记录](CHANGELOG.md)
+- [脱敏状态数据示例](examples/status.json)
 
-## Security
+## 安全须知
 
-Never commit device-specific credentials, API tokens, private keys, real device identifiers, or live network identifiers. The sample payload is illustrative and sanitized. See [Security](docs/security.md).
+严禁将设备专属凭据、API Token、私钥、真实设备标识或正在使用的网络标识提交到代码仓库。示例数据仅用于说明，已进行脱敏处理。详细要求请参阅[安全说明](docs/security.md)。
 
-## Development platform
+## 开发与验证环境
 
-Initial validation target:
+当前已完成验证的环境：
 
 - Cudy TR1200 v1
 - OpenWrt 25.12.6
 - MIPS 24KEc / `mipsel_24kc`
 - BusyBox ash
 
-The architecture is intended to evolve toward MIPS, ARM, and RISC-V targets through hardware and platform abstraction.
+后续架构计划通过硬件与平台抽象，逐步支持 MIPS、ARM 和 RISC-V 等设备平台。该兼容性目前尚未完成验证。
 
-## License
+## 许可证
 
-No open-source license has been selected yet. All rights are reserved unless a separate license is added.
+项目目前尚未选择开源许可证。除非后续明确添加许可证，否则项目内容保留所有权利。
